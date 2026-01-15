@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IT Diagnostic Tool</title>
+    <style>
+        /* APP STYLING */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #eef2f5; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
+        /* Header */
+        .header { background: linear-gradient(135deg, #0061f2 0%, #00c6f9 100%); color: white; padding: 25px 20px; text-align: center; box-shadow: 0 4px 15px rgba(0,97,242,0.3); border-radius: 0 0 20px 20px; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 0.5px; }
+        .header p { margin: 5px 0 0; font-size: 14px; opacity: 0.9; }
+
+        .container { padding: 20px; max-width: 600px; margin: 0 auto; }
+
+        /* Search Bar */
+        .search-wrapper { position: sticky; top: 10px; z-index: 100; margin-bottom: 20px; }
+        input[type="text"] { width: 100%; padding: 16px 20px; border: none; border-radius: 15px; font-size: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); outline: none; transition: 0.3s; box-sizing: border-box; }
+        input[type="text"]:focus { box-shadow: 0 4px 25px rgba(0,97,242,0.25); transform: scale(1.02); }
+
+        /* Prediction Dropdown */
+        #prediction-list { list-style: none; padding: 0; margin: 10px 0 0; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: none; overflow: hidden; }
+        #prediction-list li { padding: 15px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer; color: #333; font-weight: 500; display: flex; justify-content: space-between; align-items: center; }
+        #prediction-list li:last-child { border-bottom: none; }
+        #prediction-list li:active { background-color: #f5f9ff; }
+
+        /* Grid Layout */
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .btn { background: white; border: none; padding: 20px; border-radius: 16px; font-size: 16px; font-weight: 600; color: #2c3e50; box-shadow: 0 2px 10px rgba(0,0,0,0.05); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 110px; transition: 0.2s; position: relative; overflow: hidden; }
+        .btn:active { transform: scale(0.96); background-color: #f8f9fa; }
+        
+        /* Icons (Text based) */
+        .icon { font-size: 32px; margin-bottom: 10px; display: block; }
+        
+        /* Result Modal (Popup) */
+        #result-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f8f9fa; z-index: 1000; overflow-y: auto; animation: slideUp 0.3s ease-out; }
+        
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .result-header { background: white; padding: 15px 20px; display: flex; align-items: center; position: sticky; top: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 1001; }
+        .back-btn { background: #eef2f5; border: none; color: #333; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; font-weight: bold; cursor: pointer; margin-right: 15px; display: flex; align-items: center; justify-content: center; }
+        .result-title { font-size: 18px; font-weight: 700; color: #2c3e50; }
+
+        .result-content { padding: 25px; padding-bottom: 50px; }
+        
+        /* Detailed Steps Styling */
+        .step-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 4px solid #0061f2; }
+        .step-header { font-size: 14px; font-weight: 800; color: #0061f2; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; display: block; }
+        .step-text { font-size: 16px; line-height: 1.6; color: #444; }
+        .highlight { background-color: #e7f1ff; padding: 2px 6px; border-radius: 4px; color: #0061f2; font-family: monospace; font-weight: bold; font-size: 14px; }
+        .warning { color: #d63384; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>IT DIAGNOSTIC TOOL</h1>
+        <p>Offline Support Assistant</p>
+    </div>
+
+    <div class="container">
+        <div class="search-wrapper">
+            <input type="text" id="searchInput" placeholder="Describe problem (e.g. 'fan spin', '4 beeps')..." onkeyup="handleSearch()" autocomplete="off">
+            <ul id="prediction-list"></ul>
+        </div>
+
+        <div class="grid" id="gridContainer">
+            </div>
+    </div>
+
+    <div id="result-view">
+        <div class="result-header">
+            <button class="back-btn" onclick="closeResult()">✕</button>
+            <span class="result-title" id="resultTitle">Solution</span>
+        </div>
+        <div class="result-content" id="resultText">
+            </div>
+    </div>
+
+    <script>
+        // ==========================================
+        //  DATABASE (The Brains)
+        // ==========================================
+        const database = {
+            "No Display / Beeps": {
+                icon: "🖥️",
+                tags: ["black", "monitor", "signal", "post", "boot", "beep", "alarm", "noise", "4", "fan", "spin", "turning"],
+                solution: `
+                <div class="step-card">
+                    <span class="step-header">Diagnosis</span>
+                    <div class="step-text">If fans are spinning but screen is black, or you hear beeps, the PC failed the "Self Test". <span class="warning">4 Beeps</span> usually means RAM or Timer failure.</div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Step 1: Reseat RAM (Most Common Fix)</span>
+                    <div class="step-text">
+                        1. Turn off PC and unplug the power cable.<br>
+                        2. Open the side panel case.<br>
+                        3. Locate the RAM (thin sticks next to CPU fan).<br>
+                        4. Push the tabs down to pop them out.<br>
+                        5. <b>Clean the gold pins</b> with a rubber eraser.<br>
+                        6. Push them back in firmly until you hear a <i>CLICK</i>.
+                    </div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Step 2: Clear CMOS</span>
+                    <div class="step-text">
+                        1. Unplug the PC.<br>
+                        2. Find the round silver battery (CR2032) on the motherboard.<br>
+                        3. Remove it for 30 seconds.<br>
+                        4. Put it back, plug in, and turn on.
+                    </div>
+                </div>`
+            },
+            "No Internet": {
+                icon: "🌐",
+                tags: ["wifi", "ethernet", "slow", "offline", "lan", "connect", "google"],
+                solution: `
+                <div class="step-card">
+                    <span class="step-header">Step 1: The Magic Command</span>
+                    <div class="step-text">
+                        1. Press <span class="highlight">Windows + R</span>, type <b>cmd</b>, press Enter.<br>
+                        2. Type this command and hit Enter:<br>
+                        <span class="highlight">ipconfig /flushdns</span><br>
+                        3. Then type: <span class="highlight">netsh winsock reset</span><br>
+                        4. Restart the PC.
+                    </div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Step 2: Check IP Settings</span>
+                    <div class="step-text">
+                        1. Go to <span class="highlight">Settings > Network & Internet</span>.<br>
+                        2. Click <b>Properties</b> on your Wi-Fi/Ethernet.<br>
+                        3. Ensure "IP assignment" is set to <b>Automatic (DHCP)</b>.
+                    </div>
+                </div>`
+            },
+            "Blue Screen (BSOD)": {
+                icon: "☹️",
+                tags: ["bsod", "crash", "error", "restart", "death", "blue", "sad"],
+                solution: `
+                <div class="step-card">
+                    <span class="step-header">Immediate Action</span>
+                    <div class="step-text">Write down the error code at the bottom (e.g., <span class="highlight">CRITICAL_PROCESS_DIED</span>).</div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Step 1: Safe Mode</span>
+                    <div class="step-text">
+                        1. Hold the <b>Shift</b> key on your keyboard and click <b>Restart</b> on the screen.<br>
+                        2. Go to <span class="highlight">Troubleshoot > Advanced > Startup Settings > Restart</span>.<br>
+                        3. Press <b>4</b> for Safe Mode.
+                    </div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Step 2: Repair Windows</span>
+                    <div class="step-text">
+                        1. Open CMD as Admin.<br>
+                        2. Type: <span class="highlight">sfc /scannow</span>
+                    </div>
+                </div>`
+            },
+            "Printer Offline": {
+                icon: "🖨️",
+                tags: ["print", "jam", "queue", "spooler", "ink", "paper"],
+                solution: `
+                <div class="step-card">
+                    <span class="step-header">Step 1: Restart Spooler</span>
+                    <div class="step-text">
+                        1. Press <span class="highlight">Win + R</span>, type <b>services.msc</b>.<br>
+                        2. Find <b>Print Spooler</b> in the list.<br>
+                        3. Right-click it and select <b>Restart</b>.
+                    </div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Step 2: Clear Queue</span>
+                    <div class="step-text">
+                        1. Go to <span class="highlight">Settings > Devices > Printers</span>.<br>
+                        2. Click your printer > <b>Open Queue</b>.<br>
+                        3. Cancel all stuck documents.
+                    </div>
+                </div>`
+            },
+            "Slow PC / Lag": {
+                icon: "🐌",
+                tags: ["lag", "freeze", "hang", "100%", "fps", "slow", "delay"],
+                solution: `
+                <div class="step-card">
+                    <span class="step-header">Step 1: Stop Startup Apps</span>
+                    <div class="step-text">
+                        1. Right-click Taskbar > <b>Task Manager</b>.<br>
+                        2. Go to <b>Startup</b> tab.<br>
+                        3. Disable heavy apps like Teams, Cortana, or Steam.
+                    </div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Step 2: Disk Cleanup</span>
+                    <div class="step-text">
+                        1. Press Start, type <b>Disk Cleanup</b>.<br>
+                        2. Click "Clean up system files".<br>
+                        3. Check "Windows Update Cleanup" (this often frees up 5GB+).
+                    </div>
+                </div>`
+            },
+            "No Audio": {
+                icon: "🔇",
+                tags: ["sound", "speaker", "hear", "volume", "mic", "quiet"],
+                solution: `
+                <div class="step-card">
+                    <span class="step-header">Step 1: Check Output</span>
+                    <div class="step-text">
+                        1. Click the Speaker icon (bottom right).<br>
+                        2. Click the arrow > Select <b>Speakers (Realtek)</b>.<br>
+                        <span class="warning">Note:</span> Do not select your Monitor (HDMI) unless it has built-in speakers.
+                    </div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Step 2: Reinstall Driver</span>
+                    <div class="step-text">
+                        1. Open <b>Device Manager</b>.<br>
+                        2. Expand "Sound, video and game controllers".<br>
+                        3. Right-click Realtek Audio > <b>Uninstall</b> > Restart PC.
+                    </div>
+                </div>`
+            },
+            "App Crashing": {
+                icon: "💥",
+                tags: ["close", "software", "bug", "force", "fail", "stopped"],
+                solution: `
+                <div class="step-card">
+                    <span class="step-header">Step 1: Admin Mode</span>
+                    <div class="step-text">Right-click the app icon and choose <b>Run as Administrator</b>.</div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Step 2: Event Viewer</span>
+                    <div class="step-text">
+                        1. Press Start, search <b>Event Viewer</b>.<br>
+                        2. Go to <span class="highlight">Windows Logs > Application</span>.<br>
+                        3. Look for "Error" (Red icon) to see exactly why it crashed.
+                    </div>
+                </div>`
+            },
+            "Overheating": {
+                icon: "🔥",
+                tags: ["hot", "shutdown", "fan", "thermal", "temp", "loud"],
+                solution: `
+                <div class="step-card">
+                    <span class="step-header">Step 1: Dust Check</span>
+                    <div class="step-text">Open the PC and use compressed air to clean the CPU heatsink and GPU fans.</div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Step 2: Thermal Paste</span>
+                    <div class="step-text">If the PC is 3+ years old, the thermal paste on the CPU might be dry. Remove the cooler, clean the old grey paste with alcohol, and apply a pea-sized drop of new paste.</div>
+                </div>`
+            }
+        };
+
+        // ==========================================
+        //  LOGIC FUNCTIONS
+        // ==========================================
+        const gridContainer = document.getElementById("gridContainer");
+        const predictionList = document.getElementById("prediction-list");
+        const searchInput = document.getElementById("searchInput");
+
+        // 1. Build Grid (Runs on startup)
+        function buildGrid() {
+            gridContainer.innerHTML = "";
+            for (let key in database) {
+                let btn = document.createElement("button");
+                btn.className = "btn";
+                // Show Icon + Name
+                btn.innerHTML = `<span class='icon'>${database[key].icon}</span>${key}`;
+                btn.onclick = () => openResult(key);
+                gridContainer.appendChild(btn);
+            }
+        }
+
+        // 2. Search Logic (Fixed for "fan spin")
+        function handleSearch() {
+            let query = searchInput.value.toLowerCase().trim();
+            predictionList.innerHTML = "";
+            
+            if (query.length < 1) {
+                predictionList.style.display = "none";
+                return;
+            }
+
+            // Split query into words (e.g. "fan spin" -> ["fan", "spin"])
+            let queryWords = query.split(" ");
+            
+            let matches = [];
+            for (let key in database) {
+                let tags = database[key].tags;
+                let title = key.toLowerCase();
+
+                // Match if ANY word in the query matches ANY tag or title
+                let isMatch = queryWords.some(word => 
+                    title.includes(word) || tags.some(tag => tag.includes(word))
+                );
+
+                if (isMatch) {
+                    matches.push(key);
+                }
+            }
+
+            if (matches.length > 0) {
+                predictionList.style.display = "block";
+                matches.forEach(match => {
+                    let li = document.createElement("li");
+                    li.innerHTML = `${match} <span>→</span>`;
+                    li.onclick = () => {
+                        openResult(match);
+                        searchInput.value = "";
+                        predictionList.style.display = "none";
+                    };
+                    predictionList.appendChild(li);
+                });
+            } else {
+                predictionList.style.display = "none";
+            }
+        }
+
+        // 3. Open Result Modal
+        function openResult(key) {
+            document.getElementById("resultTitle").innerText = key;
+            document.getElementById("resultText").innerHTML = database[key].solution;
+            document.getElementById("result-view").style.display = "block";
+        }
+
+        // 4. Close Result Modal
+        function closeResult() {
+            document.getElementById("result-view").style.display = "none";
+        }
+
+        // Initialize App
+        buildGrid();
+    </script>
+</body>
+</html>
