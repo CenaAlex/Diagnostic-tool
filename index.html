@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>IT Diagnostic Tool</title>
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
     <style>
         /* APP STYLING */
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #eef2f5; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -23,50 +25,51 @@
         /* Prediction Dropdown */
         #prediction-list { list-style: none; padding: 0; margin: 10px 0 0; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: none; overflow: hidden; }
         #prediction-list li { padding: 15px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer; color: #333; font-weight: 500; display: flex; justify-content: space-between; align-items: center; }
-        #prediction-list li:last-child { border-bottom: none; }
         #prediction-list li:active { background-color: #f5f9ff; }
 
         /* Grid Layout */
         .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
         .btn { background: white; border: none; padding: 20px; border-radius: 16px; font-size: 16px; font-weight: 600; color: #2c3e50; box-shadow: 0 2px 10px rgba(0,0,0,0.05); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 110px; transition: 0.2s; position: relative; overflow: hidden; }
         .btn:active { transform: scale(0.96); background-color: #f8f9fa; }
+        .btn.guide { border-left: 5px solid #00c6f9; background: #fdfdfd; } /* Blue stripe for guides */
         
-        /* Icons (Text based) */
+        /* Icons */
         .icon { font-size: 32px; margin-bottom: 10px; display: block; }
         
-        /* Result Modal (Popup) */
-        #result-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f8f9fa; z-index: 1000; overflow-y: auto; animation: slideUp 0.3s ease-out; }
-        
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-
+        /* Result Modal */
+        #result-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f8f9fa; z-index: 1000; overflow-y: auto; }
         .result-header { background: white; padding: 15px 20px; display: flex; align-items: center; position: sticky; top: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 1001; }
-        .back-btn { background: #eef2f5; border: none; color: #333; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; font-weight: bold; cursor: pointer; margin-right: 15px; display: flex; align-items: center; justify-content: center; }
+        .back-btn { background: #eef2f5; border: none; color: #333; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; font-weight: bold; cursor: pointer; margin-right: 15px; }
         .result-title { font-size: 18px; font-weight: 700; color: #2c3e50; }
 
-        .result-content { padding: 25px; padding-bottom: 50px; }
+        .result-content { padding: 25px; padding-bottom: 80px; }
         
-        /* Detailed Steps Styling */
+        /* Step Cards */
         .step-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 4px solid #0061f2; }
         .step-header { font-size: 14px; font-weight: 800; color: #0061f2; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; display: block; }
         .step-text { font-size: 16px; line-height: 1.6; color: #444; }
         .highlight { background-color: #e7f1ff; padding: 2px 6px; border-radius: 4px; color: #0061f2; font-family: monospace; font-weight: bold; font-size: 14px; }
         .warning { color: #d63384; font-weight: bold; }
+        .tool-tag { display: inline-block; background: #333; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 5px; }
+        
+        /* Category Headers */
+        .cat-header { margin: 20px 0 10px; color: #666; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; grid-column: span 2; }
     </style>
 </head>
 <body>
 
     <div class="header">
         <h1>IT DIAGNOSTIC TOOL</h1>
-        <p>Offline Support Assistant</p>
+        <p>Technician V9 (Full Guide)</p>
     </div>
 
     <div class="container">
         <div class="search-wrapper">
-            <input type="text" id="searchInput" placeholder="Describe problem (e.g. 'fan spin', '4 beeps')..." onkeyup="handleSearch()" autocomplete="off">
+            <input type="text" id="searchInput" placeholder="Search (e.g. 'clone', 'blue screen')..." onkeyup="handleSearch()" autocomplete="off">
             <ul id="prediction-list"></ul>
         </div>
 
-        <div class="grid" id="gridContainer">
+        <div class="grid" id="mainGrid">
             </div>
     </div>
 
@@ -75,207 +78,297 @@
             <button class="back-btn" onclick="closeResult()">✕</button>
             <span class="result-title" id="resultTitle">Solution</span>
         </div>
-        <div class="result-content" id="resultText">
-            </div>
+        <div class="result-content" id="resultText"></div>
     </div>
 
     <script>
         // ==========================================
-        //  DATABASE (The Brains)
+        //  DATABASE
         // ==========================================
-        const database = {
-            "No Display / Beeps": {
-                icon: "🖥️",
-                tags: ["black", "monitor", "signal", "post", "boot", "beep", "alarm", "noise", "4", "fan", "spin", "turning"],
+        
+        const guides = {
+            "Backup & Reformat": {
+                icon: "💾",
+                tags: ["backup", "format", "install", "windows", "rescuezilla", "ventoy", "wipe"],
                 solution: `
                 <div class="step-card">
-                    <span class="step-header">Diagnosis</span>
-                    <div class="step-text">If fans are spinning but screen is black, or you hear beeps, the PC failed the "Self Test". <span class="warning">4 Beeps</span> usually means RAM or Timer failure.</div>
-                </div>
-                <div class="step-card">
-                    <span class="step-header">Step 1: Reseat RAM (Most Common Fix)</span>
+                    <span class="step-header">Required Tools</span>
                     <div class="step-text">
-                        1. Turn off PC and unplug the power cable.<br>
-                        2. Open the side panel case.<br>
-                        3. Locate the RAM (thin sticks next to CPU fan).<br>
-                        4. Push the tabs down to pop them out.<br>
-                        5. <b>Clean the gold pins</b> with a rubber eraser.<br>
-                        6. Push them back in firmly until you hear a <i>CLICK</i>.
+                        1. <b>Ventoy USB</b> (Plugged into PC).<br>
+                        2. <b>External HDD</b> (For saving the backup file).<br>
+                        3. <b>Rescuezilla ISO</b> (Inside Ventoy).<br>
+                        4. <b>Windows 10/11 ISO</b> (Inside Ventoy).
                     </div>
                 </div>
                 <div class="step-card">
-                    <span class="step-header">Step 2: Clear CMOS</span>
+                    <span class="step-header">Phase 1: Backup (Rescuezilla)</span>
                     <div class="step-text">
-                        1. Unplug the PC.<br>
-                        2. Find the round silver battery (CR2032) on the motherboard.<br>
-                        3. Remove it for 30 seconds.<br>
-                        4. Put it back, plug in, and turn on.
+                        1. Boot PC > Boot Menu (F12/Esc) > Select USB > <b>Rescuezilla</b>.<br>
+                        2. Click <b>Backup</b> icon.<br>
+                        3. <b>Source:</b> Select the internal SSD (Windows Drive).<br>
+                        4. <b>Destination:</b> Select your External HDD.<br>
+                        5. Start Backup. Wait for 100% completion.<br>
+                        6. Shutdown and <span class="warning">UNPLUG External HDD</span> (Safety first!).
+                    </div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Phase 2: Reformat</span>
+                    <div class="step-text">
+                        1. Boot PC > Select USB > <b>Windows Installer</b>.<br>
+                        2. Proceed to "Custom Installation".<br>
+                        3. <b>Delete ALL Partitions</b> on Drive 0 until you see only "Unallocated Space".<br>
+                        4. Click Next (Windows will create new partitions automatically).
+                    </div>
+                </div>`
+            },
+            "Hiren's Manual": {
+                icon: "🛠️",
+                tags: [\"hiren\", \"hbcd\", \"password\", \"reset\", \"unlock\", \"disk\", \"health\", \"crystal\", \"clone\", \"boot\", \"fix\"],
+                solution: `
+                <div class="step-card">
+                    <span class="step-header">Feature 1: Password Reset</span>
+                    <div class="step-text">
+                        <span class="tool-tag">Tool: Lazesoft Password Recovery</span><br>
+                        1. Boot Hiren's > Start Menu > Security > Passwords.<br>
+                        2. Open <b>Lazesoft</b> > "Reset Windows Password".<br>
+                        3. Select the User Account (e.g., "Admin").<br>
+                        4. Click <b>RESET / UNLOCK</b>.<br>
+                        5. Restart PC. The password is now blank.
+                    </div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Feature 2: Check Disk Health</span>
+                    <div class="step-text">
+                        <span class="tool-tag">Tool: CrystalDiskInfo</span><br>
+                        1. Start Menu > Hard Disk Tools > Diagnostic.<br>
+                        2. Open <b>CrystalDiskInfo</b>.<br>
+                        3. Look at "Health Status":<br>
+                        - 🔵 <b>Good:</b> Drive is fine.<br>
+                        - 🟡 <b>Caution:</b> Backup immediately, drive is failing.<br>
+                        - 🔴 <b>Bad:</b> Drive is dead.
+                    </div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Feature 3: Clone Drive (HDD to SSD)</span>
+                    <div class="step-text">
+                        <span class="tool-tag">Tool: Macrium Reflect Free</span><br>
+                        1. Connect both drives.<br>
+                        2. Open Macrium Reflect.<br>
+                        3. Click the old drive > <b>"Clone this disk..."</b>.<br>
+                        4. Click "Select a disk to clone to..." and pick the new SSD.<br>
+                        5. Drag partitions down. Click Finish.
+                    </div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Feature 4: Fix Boot Errors</span>
+                    <div class="step-text">
+                        <span class="tool-tag">Tool: Macrium Reflect (Fix Boot)</span><br>
+                        1. If Windows says "No Boot Device".<br>
+                        2. Open Macrium Reflect.<br>
+                        3. Go to <b>Restore</b> tab > <b>Fix Windows Boot Problems</b>.<br>
+                        4. Follow the wizard. It rebuilds the BCD automatically.
+                    </div>
+                </div>`
+            }
+        };
+
+        const problems = {
+            "No Display / Beeps": {
+                icon: "🖥️",
+                tags: ["black", "monitor", "signal", "post", "boot", "beep", "alarm", "noise", "4", "fan", "spin"],
+                solution: `
+                <div class="step-card">
+                    <span class="step-header">Diagnosis</span>
+                    <div class="step-text">If fans spin but screen is black, the PC failed "POST". Beeps indicate hardware error.</div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Step 1: Reseat RAM (The Golden Fix)</span>
+                    <div class="step-text">
+                        1. Unplug PC power.<br>
+                        2. Open case and remove RAM sticks.<br>
+                        3. <b>Clean gold pins with a rubber eraser</b>.<br>
+                        4. Reinsert firmly until you hear a CLICK.<br>
+                        5. Try one stick at a time if you have multiple.
+                    </div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Step 2: CMOS Reset</span>
+                    <div class="step-text">
+                        1. Locate the round silver battery (CR2032) on the motherboard.<br>
+                        2. Remove it for 30 seconds.<br>
+                        3. Put it back in. This resets BIOS settings.
                     </div>
                 </div>`
             },
             "No Internet": {
                 icon: "🌐",
-                tags: ["wifi", "ethernet", "slow", "offline", "lan", "connect", "google"],
+                tags: ["wifi", "ethernet", "slow", "offline", "lan", "connect"],
                 solution: `
                 <div class="step-card">
-                    <span class="step-header">Step 1: The Magic Command</span>
+                    <span class="step-header">Step 1: The Magic Commands</span>
                     <div class="step-text">
-                        1. Press <span class="highlight">Windows + R</span>, type <b>cmd</b>, press Enter.<br>
-                        2. Type this command and hit Enter:<br>
-                        <span class="highlight">ipconfig /flushdns</span><br>
-                        3. Then type: <span class="highlight">netsh winsock reset</span><br>
-                        4. Restart the PC.
+                        1. Open Start > Type <b>cmd</b> > Right-click <b>Run as Admin</b>.<br>
+                        2. Type: <span class="highlight">ipconfig /flushdns</span> (Enter)<br>
+                        3. Type: <span class="highlight">ipconfig /release</span> (Enter)<br>
+                        4. Type: <span class="highlight">ipconfig /renew</span> (Enter)<br>
+                        5. Type: <span class="highlight">netsh winsock reset</span> (Enter)<br>
+                        6. Restart PC.
                     </div>
                 </div>
                 <div class="step-card">
                     <span class="step-header">Step 2: Check IP Settings</span>
                     <div class="step-text">
-                        1. Go to <span class="highlight">Settings > Network & Internet</span>.<br>
-                        2. Click <b>Properties</b> on your Wi-Fi/Ethernet.<br>
-                        3. Ensure "IP assignment" is set to <b>Automatic (DHCP)</b>.
+                        1. Go to Settings > Network & Internet.<br>
+                        2. Ensure IP assignment is set to <b>Automatic (DHCP)</b>, not Static.
                     </div>
                 </div>`
             },
             "Blue Screen (BSOD)": {
                 icon: "☹️",
-                tags: ["bsod", "crash", "error", "restart", "death", "blue", "sad"],
+                tags: ["bsod", "crash", "error", "restart", "blue"],
                 solution: `
                 <div class="step-card">
-                    <span class="step-header">Immediate Action</span>
-                    <div class="step-text">Write down the error code at the bottom (e.g., <span class="highlight">CRITICAL_PROCESS_DIED</span>).</div>
+                    <span class="step-header">Step 1: Analyze Code</span>
+                    <div class="step-text">Look at the bottom of the screen. Example codes:<br>
+                    - <b>MEMORY_MANAGEMENT:</b> Bad RAM.<br>
+                    - <b>CRITICAL_PROCESS_DIED:</b> Corrupt Windows.<br>
+                    - <b>INACCESSIBLE_BOOT_DEVICE:</b> Bad Drive/BIOS setting.</div>
                 </div>
                 <div class="step-card">
-                    <span class="step-header">Step 1: Safe Mode</span>
-                    <div class="step-text">
-                        1. Hold the <b>Shift</b> key on your keyboard and click <b>Restart</b> on the screen.<br>
-                        2. Go to <span class="highlight">Troubleshoot > Advanced > Startup Settings > Restart</span>.<br>
-                        3. Press <b>4</b> for Safe Mode.
-                    </div>
-                </div>
-                <div class="step-card">
-                    <span class="step-header">Step 2: Repair Windows</span>
+                    <span class="step-header">Step 2: System Repair</span>
                     <div class="step-text">
                         1. Open CMD as Admin.<br>
-                        2. Type: <span class="highlight">sfc /scannow</span>
+                        2. Type: <span class="highlight">sfc /scannow</span><br>
+                        3. Wait for 100% verification.
                     </div>
                 </div>`
             },
             "Printer Offline": {
                 icon: "🖨️",
-                tags: ["print", "jam", "queue", "spooler", "ink", "paper"],
+                tags: ["print", "jam", "queue", "spooler"],
                 solution: `
                 <div class="step-card">
-                    <span class="step-header">Step 1: Restart Spooler</span>
+                    <span class="step-header">Fix: Restart Spooler</span>
                     <div class="step-text">
-                        1. Press <span class="highlight">Win + R</span>, type <b>services.msc</b>.<br>
-                        2. Find <b>Print Spooler</b> in the list.<br>
-                        3. Right-click it and select <b>Restart</b>.
+                        1. Press <b>Win + R</b> keys.<br>
+                        2. Type <span class="highlight">services.msc</span> and Enter.<br>
+                        3. Scroll down to <b>Print Spooler</b>.<br>
+                        4. Right-click and select <b>Restart</b>.
                     </div>
                 </div>
                 <div class="step-card">
-                    <span class="step-header">Step 2: Clear Queue</span>
+                    <span class="step-header">Fix: Clear Queue</span>
                     <div class="step-text">
-                        1. Go to <span class="highlight">Settings > Devices > Printers</span>.<br>
-                        2. Click your printer > <b>Open Queue</b>.<br>
-                        3. Cancel all stuck documents.
+                        Go to Settings > Devices > Printers > Open Queue > Cancel All Documents.
                     </div>
                 </div>`
             },
-            "Slow PC / Lag": {
+            "Slow PC": {
                 icon: "🐌",
-                tags: ["lag", "freeze", "hang", "100%", "fps", "slow", "delay"],
+                tags: ["lag", "freeze", "hang", "100%", "disk"],
                 solution: `
                 <div class="step-card">
-                    <span class="step-header">Step 1: Stop Startup Apps</span>
+                    <span class="step-header">Step 1: Check Task Manager</span>
                     <div class="step-text">
-                        1. Right-click Taskbar > <b>Task Manager</b>.<br>
-                        2. Go to <b>Startup</b> tab.<br>
-                        3. Disable heavy apps like Teams, Cortana, or Steam.
+                        Press Ctrl+Shift+Esc.<br>
+                        - If <b>Disk is 100%</b>: HDD is failing or Windows Update is stuck.<br>
+                        - If <b>Memory is 90%</b>: Close Chrome tabs or buy more RAM.
                     </div>
                 </div>
                 <div class="step-card">
-                    <span class="step-header">Step 2: Disk Cleanup</span>
+                    <span class="step-header">Step 2: Disable Startup Apps</span>
                     <div class="step-text">
-                        1. Press Start, type <b>Disk Cleanup</b>.<br>
-                        2. Click "Clean up system files".<br>
-                        3. Check "Windows Update Cleanup" (this often frees up 5GB+).
+                        Task Manager > Startup Tab > Right-click heavy apps (Teams, Spotify) > <b>Disable</b>.
                     </div>
                 </div>`
             },
             "No Audio": {
                 icon: "🔇",
-                tags: ["sound", "speaker", "hear", "volume", "mic", "quiet"],
+                tags: ["sound", "speaker", "hear", "volume"],
                 solution: `
                 <div class="step-card">
-                    <span class="step-header">Step 1: Check Output</span>
-                    <div class="step-text">
-                        1. Click the Speaker icon (bottom right).<br>
-                        2. Click the arrow > Select <b>Speakers (Realtek)</b>.<br>
-                        <span class="warning">Note:</span> Do not select your Monitor (HDMI) unless it has built-in speakers.
-                    </div>
+                    <span class="step-header">Fix 1: Output Device</span>
+                    <div class="step-text">Click Speaker icon. Ensure it says "Speakers (Realtek)" and NOT your Monitor (HDMI).</div>
                 </div>
                 <div class="step-card">
-                    <span class="step-header">Step 2: Reinstall Driver</span>
+                    <span class="step-header">Fix 2: Reinstall Driver</span>
                     <div class="step-text">
-                        1. Open <b>Device Manager</b>.<br>
-                        2. Expand "Sound, video and game controllers".<br>
-                        3. Right-click Realtek Audio > <b>Uninstall</b> > Restart PC.
+                        Device Manager > Sound, video and game controllers > Right-click Audio Driver > <b>Uninstall</b> > Restart PC.
                     </div>
                 </div>`
             },
-            "App Crashing": {
+            "App Crash": {
                 icon: "💥",
-                tags: ["close", "software", "bug", "force", "fail", "stopped"],
+                tags: ["close", "software", "bug", "force"],
                 solution: `
                 <div class="step-card">
-                    <span class="step-header">Step 1: Admin Mode</span>
-                    <div class="step-text">Right-click the app icon and choose <b>Run as Administrator</b>.</div>
+                    <span class="step-header">Fix 1: Admin Mode</span>
+                    <div class="step-text">Right-click the app icon > <b>Run as Administrator</b>.</div>
                 </div>
                 <div class="step-card">
-                    <span class="step-header">Step 2: Event Viewer</span>
+                    <span class="step-header">Fix 2: Event Viewer</span>
                     <div class="step-text">
-                        1. Press Start, search <b>Event Viewer</b>.<br>
-                        2. Go to <span class="highlight">Windows Logs > Application</span>.<br>
-                        3. Look for "Error" (Red icon) to see exactly why it crashed.
+                        Search "Event Viewer" > Windows Logs > Application. Look for Red Error icons to see the cause.
                     </div>
                 </div>`
             },
             "Overheating": {
                 icon: "🔥",
-                tags: ["hot", "shutdown", "fan", "thermal", "temp", "loud"],
+                tags: ["hot", "shutdown", "fan", "thermal"],
                 solution: `
                 <div class="step-card">
-                    <span class="step-header">Step 1: Dust Check</span>
-                    <div class="step-text">Open the PC and use compressed air to clean the CPU heatsink and GPU fans.</div>
-                </div>
-                <div class="step-card">
-                    <span class="step-header">Step 2: Thermal Paste</span>
-                    <div class="step-text">If the PC is 3+ years old, the thermal paste on the CPU might be dry. Remove the cooler, clean the old grey paste with alcohol, and apply a pea-sized drop of new paste.</div>
+                    <span class="step-header">Maintenance</span>
+                    <div class="step-text">
+                        1. Use compressed air to clean dust from heatsink.<br>
+                        2. If PC is >3 years old, remove cooler and replace <b>Thermal Paste</b>.<br>
+                        3. Ensure fans are actually spinning.
+                    </div>
                 </div>`
             }
         };
 
-        // ==========================================
-        //  LOGIC FUNCTIONS
-        // ==========================================
-        const gridContainer = document.getElementById("gridContainer");
+        // ================= LOGIC =================
+        const mainGrid = document.getElementById("mainGrid");
         const predictionList = document.getElementById("prediction-list");
         const searchInput = document.getElementById("searchInput");
+        
+        // Combine for search
+        const allItems = { ...guides, ...problems };
 
-        // 1. Build Grid (Runs on startup)
-        function buildGrid() {
-            gridContainer.innerHTML = "";
-            for (let key in database) {
+        function renderMain() {
+            mainGrid.innerHTML = "";
+            
+            // 1. Guides Section Header
+            let guideHeader = document.createElement("div");
+            guideHeader.className = "cat-header";
+            guideHeader.innerText = "Technician Guides";
+            mainGrid.appendChild(guideHeader);
+
+            // 2. Render Guides
+            for (let key in guides) {
+                let btn = document.createElement("button");
+                btn.className = "btn guide";
+                btn.innerHTML = `<span class='icon'>${guides[key].icon}</span>${key}`;
+                btn.onclick = () => openResult(key, guides[key]);
+                mainGrid.appendChild(btn);
+            }
+
+            // 3. Problems Section Header
+            let probHeader = document.createElement("div");
+            probHeader.className = "cat-header";
+            probHeader.innerText = "Troubleshooting";
+            mainGrid.appendChild(probHeader);
+
+            // 4. Render Problems
+            for (let key in problems) {
                 let btn = document.createElement("button");
                 btn.className = "btn";
-                // Show Icon + Name
-                btn.innerHTML = `<span class='icon'>${database[key].icon}</span>${key}`;
-                btn.onclick = () => openResult(key);
-                gridContainer.appendChild(btn);
+                btn.innerHTML = `<span class='icon'>${problems[key].icon}</span>${key}`;
+                btn.onclick = () => openResult(key, problems[key]);
+                mainGrid.appendChild(btn);
             }
         }
 
-        // 2. Search Logic (Fixed for "fan spin")
         function handleSearch() {
             let query = searchInput.value.toLowerCase().trim();
             predictionList.innerHTML = "";
@@ -285,20 +378,13 @@
                 return;
             }
 
-            // Split query into words (e.g. "fan spin" -> ["fan", "spin"])
             let queryWords = query.split(" ");
-            
             let matches = [];
-            for (let key in database) {
-                let tags = database[key].tags;
+
+            for (let key in allItems) {
+                let tags = allItems[key].tags;
                 let title = key.toLowerCase();
-
-                // Match if ANY word in the query matches ANY tag or title
-                let isMatch = queryWords.some(word => 
-                    title.includes(word) || tags.some(tag => tag.includes(word))
-                );
-
-                if (isMatch) {
+                if (queryWords.some(w => title.includes(w) || tags.some(t => t.includes(w)))) {
                     matches.push(key);
                 }
             }
@@ -309,7 +395,7 @@
                     let li = document.createElement("li");
                     li.innerHTML = `${match} <span>→</span>`;
                     li.onclick = () => {
-                        openResult(match);
+                        openResult(match, allItems[match]);
                         searchInput.value = "";
                         predictionList.style.display = "none";
                     };
@@ -320,20 +406,18 @@
             }
         }
 
-        // 3. Open Result Modal
-        function openResult(key) {
-            document.getElementById("resultTitle").innerText = key;
-            document.getElementById("resultText").innerHTML = database[key].solution;
+        function openResult(title, data) {
+            document.getElementById("resultTitle").innerText = title;
+            document.getElementById("resultText").innerHTML = data.solution;
             document.getElementById("result-view").style.display = "block";
         }
 
-        // 4. Close Result Modal
         function closeResult() {
             document.getElementById("result-view").style.display = "none";
         }
 
-        // Initialize App
-        buildGrid();
+        // Start
+        renderMain();
     </script>
 </body>
 </html>
