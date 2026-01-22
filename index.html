@@ -60,12 +60,12 @@
 
     <div class="header">
         <h1>IT DIAGNOSTIC TOOL</h1>
-        <p>Technician V9.1 (Fixed)</p>
+        <p>Technician V9.2 (Disk Tools)</p>
     </div>
 
     <div class="container">
         <div class="search-wrapper">
-            <input type="text" id="searchInput" placeholder="Search (e.g. 'clone', 'blue screen')..." onkeyup="handleSearch()" autocomplete="off">
+            <input type="text" id="searchInput" placeholder="Search (e.g. 'disk', 'blue screen')..." onkeyup="handleSearch()" autocomplete="off">
             <ul id="prediction-list"></ul>
         </div>
 
@@ -173,6 +173,36 @@
         };
 
         const problems = {
+            "Drive Not Showing": {
+                icon: "💽",
+                tags: ["hdd", "ssd", "disk", "detect", "explorer", "letter", "initialize", "partition", "mount"],
+                solution: `
+                <div class="step-card">
+                    <span class="step-header">Diagnosis</span>
+                    <div class="step-text">If the drive shows in Device Manager/BIOS but not in File Explorer, it usually lacks a <b>Drive Letter</b> or needs <b>Initialization</b>.</div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Fix 1: Disk Management (Safe)</span>
+                    <div class="step-text">
+                        1. Right-click the Start Button > select <b>Disk Management</b>.<br>
+                        2. Look for a drive with a <span class="warning">Black Bar</span> (Unallocated) or no letter.<br>
+                        3. <b>If Black/Unallocated:</b> Right-click it > <b>New Simple Volume</b> > Next > Next > Finish.<br>
+                        4. <b>If Blue but No Letter:</b> Right-click it > <b>Change Drive Letter and Paths</b> > Add > OK.
+                    </div>
+                </div>
+                <div class="step-card">
+                    <span class="step-header">Fix 2: Diskpart (CMD)</span>
+                    <div class="step-text">
+                        <span class="warning">WARNING: This Wipes Data!</span> Use if Disk Management fails.<br>
+                        1. Open CMD as Admin.<br>
+                        2. Type <span class="highlight">diskpart</span> > Enter.<br>
+                        3. Type <span class="highlight">list disk</span> > Identify your disk number (e.g., Disk 1).<br>
+                        4. Type <span class="highlight">select disk #</span> (Replace # with number).<br>
+                        5. Type <span class="highlight">clean</span> (Wipes it).<br>
+                        6. Type <span class="highlight">create partition primary</span> > <span class="highlight">format fs=ntfs quick</span> > <span class="highlight">assign</span>.
+                    </div>
+                </div>`
+            },
             "No Display / Beeps": {
                 icon: "🖥️",
                 tags: ["black", "monitor", "signal", "post", "boot", "beep", "alarm", "noise", "4", "fan", "spin"],
